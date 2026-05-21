@@ -10,13 +10,9 @@ export default async function FoodLogPage() {
   const today = formatDate(new Date());
 
   const [{ data: logs }, { data: profiles }, { data: profile }] = await Promise.all([
-    supabase
-      .from("food_logs")
-      .select("*")
-      .eq("date", today)
-      .order("created_at", { ascending: true }),
+    supabase.from("food_logs").select("*").eq("date", today).order("created_at", { ascending: true }),
     supabase.from("profiles").select("id, name"),
-    supabase.from("profiles").select("target_calories").eq("id", user.id).single(),
+    supabase.from("profiles").select("target_calories, target_protein, target_carbs, target_fat, goal").eq("id", user.id).single(),
   ]);
 
   return (
@@ -26,6 +22,10 @@ export default async function FoodLogPage() {
       logs={logs ?? []}
       profiles={profiles ?? []}
       targetCalories={profile?.target_calories ?? 2000}
+      targetProtein={profile?.target_protein ?? null}
+      targetCarbs={profile?.target_carbs ?? null}
+      targetFat={profile?.target_fat ?? null}
+      goal={profile?.goal ?? "maintain"}
     />
   );
 }

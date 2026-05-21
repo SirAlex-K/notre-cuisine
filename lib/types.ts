@@ -6,6 +6,15 @@ export interface Profile {
   role: "user" | "partner";
   target_calories: number;
   target_weight: number | null;
+  height: number | null;
+  age: number | null;
+  gender: "male" | "female" | null;
+  activity_level: string | null;
+  goal: string | null;
+  target_protein: number | null;
+  target_carbs: number | null;
+  target_fat: number | null;
+  setup_weight: number | null;
 }
 
 export interface WeeklyBudget {

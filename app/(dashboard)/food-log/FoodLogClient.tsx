@@ -3,12 +3,22 @@
 import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { BookOpen, Plus, Camera, Loader2, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, Plus, Camera, Loader2, Trash2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { cn, MEAL_LABELS } from "@/lib/utils";
 import Image from "next/image";
 import type { FoodLog, MealType, MacroAnalysis } from "@/lib/types";
 
 const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner", "snack"];
+
+interface MealSuggestion {
+  name: string;
+  description: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  why: string;
+}
 
 interface Props {
   userId: string;
@@ -16,9 +26,13 @@ interface Props {
   logs: FoodLog[];
   profiles: { id: string; name: string }[];
   targetCalories: number;
+  targetProtein: number | null;
+  targetCarbs: number | null;
+  targetFat: number | null;
+  goal: string;
 }
 
-export default function FoodLogClient({ userId, today, logs, profiles, targetCalories }: Props) {
+export default function FoodLogClient({ userId, today, logs, profiles, targetCalories, targetProtein, targetCarbs, targetFat, goal }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState<MealType>("lunch");
   const [foodName, setFoodName] = useState("");
@@ -31,6 +45,8 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
   const [analyzing, setAnalyzing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedUser, setSelectedUser] = useState(userId);
+  const [suggestions, setSuggestions] = useState<MealSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const router = useRouter();
@@ -118,6 +134,31 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
     router.refresh();
   }
 
+  async function getSuggestions() {
+    setLoadingSuggestions(true);
+    setSuggestions([]);
+    try {
+      const res = await fetch("/api/suggest-meals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          goal,
+          calories: targetCalories,
+          protein: targetProtein ?? Math.round(targetCalories * 0.30 / 4),
+          carbs: targetCarbs ?? Math.round(targetCalories * 0.45 / 4),
+          fat: targetFat ?? Math.round(targetCalories * 0.25 / 9),
+          caloriesEaten: totalCal,
+          proteinEaten: totalProt,
+          carbsEaten: totalCarbs2,
+          fatEaten: totalFat,
+        }),
+      });
+      const data = await res.json();
+      if (data.suggestions) setSuggestions(data.suggestions);
+    } catch {}
+    setLoadingSuggestions(false);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -163,19 +204,56 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
         </div>
         <div className="grid grid-cols-3 gap-2 text-center text-sm">
           <div className="bg-blue-50 rounded-xl p-2">
-            <div className="font-bold text-blue-600">{Math.round(totalProt)}g</div>
+            <div className="font-bold text-blue-600">{Math.round(totalProt)}g{targetProtein ? <span className="font-normal text-blue-400"> / {targetProtein}g</span> : ""}</div>
             <div className="text-xs text-gray-500">Protéines</div>
           </div>
           <div className="bg-yellow-50 rounded-xl p-2">
-            <div className="font-bold text-yellow-600">{Math.round(totalCarbs2)}g</div>
+            <div className="font-bold text-yellow-600">{Math.round(totalCarbs2)}g{targetCarbs ? <span className="font-normal text-yellow-400"> / {targetCarbs}g</span> : ""}</div>
             <div className="text-xs text-gray-500">Glucides</div>
           </div>
           <div className="bg-red-50 rounded-xl p-2">
-            <div className="font-bold text-red-500">{Math.round(totalFat)}g</div>
+            <div className="font-bold text-red-500">{Math.round(totalFat)}g{targetFat ? <span className="font-normal text-red-300"> / {targetFat}g</span> : ""}</div>
             <div className="text-xs text-gray-500">Lipides</div>
           </div>
         </div>
+
+        {/* Bouton suggestions IA */}
+        <div className="mt-4 pt-3 border-t border-gray-100">
+          <button
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-brand-500 to-purple-500 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+            onClick={getSuggestions}
+            disabled={loadingSuggestions}
+          >
+            {loadingSuggestions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            {loadingSuggestions ? "L'IA réfléchit..." : "Suggestions de repas IA"}
+          </button>
+        </div>
       </div>
+
+      {/* Suggestions IA */}
+      {suggestions.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-gray-700 flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-purple-500" />
+            Suggestions pour toi
+          </h2>
+          {suggestions.map((s, i) => (
+            <div key={i} className="card border-l-4 border-l-purple-400">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <h3 className="font-semibold text-gray-900">{s.name}</h3>
+                <span className="text-sm font-bold text-orange-500 whitespace-nowrap">{s.calories} kcal</span>
+              </div>
+              <p className="text-sm text-gray-600 mb-2">{s.description}</p>
+              <div className="flex gap-3 text-xs text-gray-500 mb-2">
+                <span className="text-blue-600 font-medium">P: {s.protein}g</span>
+                <span className="text-yellow-600 font-medium">G: {s.carbs}g</span>
+                <span className="text-red-500 font-medium">L: {s.fat}g</span>
+              </div>
+              <p className="text-xs text-purple-600 italic">💡 {s.why}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add entry */}
       <div className="card">

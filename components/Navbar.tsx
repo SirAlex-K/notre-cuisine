@@ -11,6 +11,7 @@ import {
   BookOpen,
   Scale,
   LogOut,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,10 @@ const navItems = [
   { href: "/groceries", label: "Courses", icon: ShoppingCart },
   { href: "/food-log", label: "Journal", icon: BookOpen },
   { href: "/weight", label: "Poids", icon: Scale },
+];
+
+const sidebarExtra = [
+  { href: "/profile", label: "Mon profil", icon: UserCircle },
 ];
 
 export default function Navbar({ userName }: { userName: string }) {
@@ -63,8 +68,22 @@ export default function Navbar({ userName }: { userName: string }) {
         </nav>
 
         <div className="border-t border-gray-100 pt-4 mt-4">
-          <p className="text-xs text-gray-400 px-3 mb-2">Connecté en tant que</p>
-          <p className="text-sm font-medium text-gray-700 px-3 mb-3">{userName}</p>
+          {sidebarExtra.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors mb-1",
+                pathname === href
+                  ? "bg-brand-50 text-brand-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </Link>
+          ))}
+          <p className="text-xs text-gray-400 px-3 mb-1 mt-2">{userName}</p>
           <button
             onClick={handleSignOut}
             className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-500 px-3 py-2 w-full rounded-xl hover:bg-red-50 transition-colors"
