@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { BookOpen, Plus, Camera, Loader2, Trash2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { BookOpen, Plus, Camera, Loader2, Trash2, ChevronDown, ChevronUp, Sparkles, Pencil, Check, X } from "lucide-react";
 import { cn, MEAL_LABELS } from "@/lib/utils";
 import Image from "next/image";
 import type { FoodLog, MealType, MacroAnalysis } from "@/lib/types";
@@ -47,6 +47,12 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
   const [selectedUser, setSelectedUser] = useState(userId);
   const [suggestions, setSuggestions] = useState<MealSuggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editCalories, setEditCalories] = useState("");
+  const [editProtein, setEditProtein] = useState("");
+  const [editCarbs, setEditCarbs] = useState("");
+  const [editFat, setEditFat] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const router = useRouter();
@@ -131,6 +137,27 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
 
   async function deleteLog(id: string) {
     await supabase.from("food_logs").delete().eq("id", id);
+    router.refresh();
+  }
+
+  function startEdit(log: FoodLog) {
+    setEditingId(log.id);
+    setEditName(log.food_name);
+    setEditCalories(log.calories?.toString() ?? "");
+    setEditProtein(log.protein?.toString() ?? "");
+    setEditCarbs(log.carbs?.toString() ?? "");
+    setEditFat(log.fat?.toString() ?? "");
+  }
+
+  async function saveEdit(id: string) {
+    await supabase.from("food_logs").update({
+      food_name: editName.trim(),
+      calories: parseInt(editCalories) || 0,
+      protein: parseFloat(editProtein) || 0,
+      carbs: parseFloat(editCarbs) || 0,
+      fat: parseFloat(editFat) || 0,
+    }).eq("id", id);
+    setEditingId(null);
     router.refresh();
   }
 
@@ -370,27 +397,57 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
             <h3 className="font-semibold text-gray-700 mb-3">{MEAL_LABELS[mt]}</h3>
             <div className="space-y-3">
               {typeLogs.map((log) => (
-                <div key={log.id} className="flex items-start gap-3 group">
-                  {log.photo_url && (
-                    <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
-                      <Image src={log.photo_url} alt={log.food_name} fill className="object-cover" />
+                <div key={log.id}>
+                  {editingId === log.id ? (
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                      <input
+                        type="text"
+                        className="input text-sm"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        placeholder="Nom du repas"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" className="input text-sm" value={editCalories} onChange={(e) => setEditCalories(e.target.value)} placeholder="kcal" />
+                        <input type="number" className="input text-sm" value={editProtein} onChange={(e) => setEditProtein(e.target.value)} placeholder="Prot (g)" step="0.1" />
+                        <input type="number" className="input text-sm" value={editCarbs} onChange={(e) => setEditCarbs(e.target.value)} placeholder="Gluc (g)" step="0.1" />
+                        <input type="number" className="input text-sm" value={editFat} onChange={(e) => setEditFat(e.target.value)} placeholder="Lip (g)" step="0.1" />
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => saveEdit(log.id)} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-xl bg-brand-500 text-white text-sm font-medium">
+                          <Check className="w-4 h-4" /> Sauvegarder
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="flex items-center justify-center px-3 py-1.5 rounded-xl bg-gray-200 text-gray-600 text-sm">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3 group">
+                      {log.photo_url && (
+                        <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                          <Image src={log.photo_url} alt={log.food_name} fill className="object-cover" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{log.food_name}</p>
+                        <div className="flex gap-3 text-xs text-gray-500 mt-0.5 flex-wrap">
+                          <span className="text-orange-500 font-medium">{log.calories} kcal</span>
+                          <span>P: {log.protein}g</span>
+                          <span>G: {log.carbs}g</span>
+                          <span>L: {log.fat}g</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                        <button onClick={() => startEdit(log)} className="text-gray-300 hover:text-brand-500 p-1">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => deleteLog(log.id)} className="text-gray-300 hover:text-red-400 p-1">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{log.food_name}</p>
-                    <div className="flex gap-3 text-xs text-gray-500 mt-0.5 flex-wrap">
-                      <span className="text-orange-500 font-medium">{log.calories} kcal</span>
-                      <span>P: {log.protein}g</span>
-                      <span>G: {log.carbs}g</span>
-                      <span>L: {log.fat}g</span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => deleteLog(log.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               ))}
             </div>
