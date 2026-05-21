@@ -66,3 +66,22 @@ export interface MacroAnalysis {
   carbs: number;
   fat: number;
 }
+
+export interface ReceiptItem {
+  id: string;
+  receipt_id: string;
+  name: string;
+  quantity: string | null;
+  price: number;
+}
+
+export interface Receipt {
+  id: string;
+  user_id: string;
+  store_name: string | null;
+  date: string | null;
+  total: number;
+  photo_url: string | null;
+  created_at: string;
+  items?: ReceiptItem[];
+}

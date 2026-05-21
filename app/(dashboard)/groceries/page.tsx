@@ -9,10 +9,15 @@ export default async function GroceriesPage() {
 
   const weekStart = formatDate(getWeekStart());
 
-  const [{ data: items }, { data: budget }, { data: profiles }] = await Promise.all([
+  const [{ data: items }, { data: budget }, { data: profiles }, { data: receipts }] = await Promise.all([
     supabase.from("grocery_items").select("*").eq("week_start", weekStart).order("created_at"),
     supabase.from("weekly_budgets").select("*").eq("week_start", weekStart).single(),
     supabase.from("profiles").select("id, name"),
+    supabase
+      .from("receipts")
+      .select("*, items:receipt_items(*)")
+      .order("created_at", { ascending: false })
+      .limit(20),
   ]);
 
   return (
@@ -23,6 +28,7 @@ export default async function GroceriesPage() {
       items={items ?? []}
       budget={budget}
       profiles={profiles ?? []}
+      receipts={receipts ?? []}
     />
   );
 }
