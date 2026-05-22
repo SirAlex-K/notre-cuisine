@@ -49,6 +49,15 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
       notes: notes.trim() || null,
       user_id: selectedUser,
     });
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `a planifié "${mealName.trim()}" dans le planning`,
+        url: "/meal-plan",
+      }),
+    });
+
     setAdding(null);
     setMealName("");
     setNotes("");

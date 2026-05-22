@@ -123,6 +123,15 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
       user_id: selectedUser,
     });
 
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `a ajouté "${foodName.trim()}" dans le journal`,
+        url: "/food-log",
+      }),
+    });
+
     setShowForm(false);
     setFoodName("");
     setCalories("");
