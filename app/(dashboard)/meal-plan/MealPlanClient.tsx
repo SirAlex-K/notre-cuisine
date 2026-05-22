@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Plus, X, CalendarDays } from "lucide-react";
+import { Plus, X, CalendarDays, Pencil, Check } from "lucide-react";
 import { cn, MEAL_LABELS } from "@/lib/utils";
 import type { MealPlan, MealType } from "@/lib/types";
 
@@ -25,6 +25,9 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [selectedUser, setSelectedUser] = useState(userId);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editNotes, setEditNotes] = useState("");
   const supabase = createClient();
   const router = useRouter();
 
@@ -55,6 +58,21 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
 
   async function deleteMeal(id: string) {
     await supabase.from("meal_plans").delete().eq("id", id);
+    router.refresh();
+  }
+
+  function startEdit(m: MealPlan) {
+    setEditingId(m.id);
+    setEditName(m.meal_name);
+    setEditNotes(m.notes ?? "");
+  }
+
+  async function saveEdit(id: string) {
+    await supabase.from("meal_plans").update({
+      meal_name: editName.trim(),
+      notes: editNotes.trim() || null,
+    }).eq("id", id);
+    setEditingId(null);
     router.refresh();
   }
 
@@ -113,20 +131,52 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
 
                       <div className="space-y-1.5 mb-2">
                         {meals.map((m) => (
-                          <div key={m.id} className="flex items-start justify-between gap-1 group">
-                            <div>
-                              <p className="text-sm font-medium text-gray-800 leading-tight">{m.meal_name}</p>
-                              {m.notes && <p className="text-xs text-gray-400">{m.notes}</p>}
-                              {profiles.length > 1 && (
-                                <p className="text-xs text-brand-500">{getUserName(m.user_id)}</p>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => deleteMeal(m.id)}
-                              className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
+                          <div key={m.id}>
+                            {editingId === m.id ? (
+                              <div className="space-y-1">
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  className="input text-xs py-1"
+                                  value={editName}
+                                  onChange={(e) => setEditName(e.target.value)}
+                                  onKeyDown={(e) => e.key === "Enter" && saveEdit(m.id)}
+                                />
+                                <input
+                                  type="text"
+                                  className="input text-xs py-1"
+                                  placeholder="Notes (optionnel)"
+                                  value={editNotes}
+                                  onChange={(e) => setEditNotes(e.target.value)}
+                                />
+                                <div className="flex gap-1">
+                                  <button className="btn-primary text-xs py-1 px-2 flex-1 flex items-center justify-center gap-1" onClick={() => saveEdit(m.id)}>
+                                    <Check className="w-3 h-3" /> OK
+                                  </button>
+                                  <button className="btn-secondary text-xs py-1 px-2" onClick={() => setEditingId(null)}>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-start justify-between gap-1">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-800 leading-tight">{m.meal_name}</p>
+                                  {m.notes && <p className="text-xs text-gray-400">{m.notes}</p>}
+                                  {profiles.length > 1 && (
+                                    <p className="text-xs text-brand-500">{getUserName(m.user_id)}</p>
+                                  )}
+                                </div>
+                                <div className="flex gap-0.5 flex-shrink-0">
+                                  <button onClick={() => startEdit(m)} className="text-gray-400 hover:text-brand-500 p-1 transition-colors">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => deleteMeal(m.id)} className="text-gray-400 hover:text-red-400 p-1 transition-colors">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
