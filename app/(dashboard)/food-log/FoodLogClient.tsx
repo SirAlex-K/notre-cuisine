@@ -438,11 +438,11 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
                           <span>L: {log.fat}g</span>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <button onClick={() => startEdit(log)} className="text-gray-400 hover:text-brand-500 p-1 transition-colors">
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button onClick={() => startEdit(log)} className="bg-brand-50 text-brand-500 hover:bg-brand-100 p-2 rounded-lg transition-colors">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => deleteLog(log.id)} className="text-gray-400 hover:text-red-400 p-1 transition-colors">
+                        <button onClick={() => deleteLog(log.id)} className="bg-red-50 text-red-400 hover:bg-red-100 p-2 rounded-lg transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
