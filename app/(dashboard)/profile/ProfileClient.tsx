@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { User, Save, Zap, Target, Activity } from "lucide-react";
+import { User, Save, Zap, Target, Activity, Bell, BellOff, BellRing } from "lucide-react";
 import { cn, calculateNutrition, ACTIVITY_LABELS, GOAL_LABELS } from "@/lib/utils";
 import type { ActivityLevel, Goal, Gender } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
@@ -22,9 +22,41 @@ export default function ProfileClient({ profile, latestWeight }: Props) {
   const [goal, setGoal] = useState<Goal>((profile.goal as Goal) ?? "maintain");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [notifStatus, setNotifStatus] = useState<"unknown" | "granted" | "denied" | "default">("unknown");
+  const [notifLoading, setNotifLoading] = useState(false);
 
   const supabase = createClient();
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotifStatus(Notification.permission as "granted" | "denied" | "default");
+    }
+  }, []);
+
+  async function enableNotifications() {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    setNotifLoading(true);
+    try {
+      const permission = await Notification.requestPermission();
+      setNotifStatus(permission as "granted" | "denied" | "default");
+      if (permission !== "granted") return;
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+      const existing = await reg.pushManager.getSubscription();
+      const sub = existing ?? await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      });
+      await fetch("/api/push-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+      });
+    } finally {
+      setNotifLoading(false);
+    }
+  }
 
   const weight = latestWeight ?? profile.setup_weight ?? null;
 
@@ -199,6 +231,51 @@ export default function ProfileClient({ profile, latestWeight }: Props) {
         <div className="card bg-gray-50 border-dashed text-center py-6 text-gray-400">
           <Zap className="w-8 h-8 mx-auto mb-2 opacity-30" />
           <p className="text-sm">Remplis ta taille, ton âge et ajoute ton poids<br/>pour voir tes objectifs calculés automatiquement</p>
+        </div>
+      )}
+
+      {/* Notifications */}
+      {notifStatus !== "unknown" && (
+        <div className="card space-y-3">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-brand-500" />
+            Notifications push
+          </h2>
+          {notifStatus === "granted" ? (
+            <div className="flex items-center gap-3 bg-green-50 rounded-xl px-4 py-3">
+              <BellRing className="w-5 h-5 text-green-500 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-800">Notifications activées ✓</p>
+                <p className="text-xs text-green-600">Tu reçois les alertes quand l&apos;autre personne ajoute un repas.</p>
+              </div>
+            </div>
+          ) : notifStatus === "denied" ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 bg-red-50 rounded-xl px-4 py-3">
+                <BellOff className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-red-800">Notifications bloquées</p>
+                  <p className="text-xs text-red-600">Tu as refusé la permission. Pour l&apos;activer :</p>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 bg-gray-50 rounded-xl px-4 py-3 space-y-1">
+                <p><strong>Android Chrome :</strong> Clique sur le 🔒 dans la barre d&apos;adresse → Autorisations du site → Notifications → Autoriser</p>
+                <p><strong>iPhone Safari :</strong> Réglages → Safari → notre-cuisine.vercel.app → Notifications → Autoriser</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-gray-500">Reçois une notification dès que l&apos;autre personne ajoute un repas.</p>
+              <button
+                onClick={enableNotifications}
+                disabled={notifLoading}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+              >
+                <Bell className="w-4 h-4" />
+                {notifLoading ? "Activation..." : "Activer les notifications"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
