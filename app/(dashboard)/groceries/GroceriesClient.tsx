@@ -45,9 +45,18 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
     return profiles.find((p) => p.id === id)?.name ?? "?";
   }
 
+  function notify(message: string, url: string) {
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, url }),
+    });
+  }
+
   async function addItem() {
     if (!newName.trim()) return;
     setSaving(true);
+    const label = newQty.trim() ? `${newName.trim()} (${newQty.trim()})` : newName.trim();
     await supabase.from("grocery_items").insert({
       week_start: weekStart,
       name: newName.trim(),
@@ -56,6 +65,7 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
       checked: false,
       added_by: userId,
     });
+    notify(`a ajouté "${label}" dans la liste de courses`, "/groceries");
     setNewName("");
     setNewQty("");
     setNewPrice("");
@@ -64,20 +74,27 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
   }
 
   async function toggleItem(item: GroceryItem) {
-    await supabase.from("grocery_items").update({ checked: !item.checked }).eq("id", item.id);
+    const newState = !item.checked;
+    await supabase.from("grocery_items").update({ checked: newState }).eq("id", item.id);
+    notify(
+      newState ? `a coché "${item.name}" dans la liste de courses` : `a décoché "${item.name}" dans la liste de courses`,
+      "/groceries"
+    );
     router.refresh();
   }
 
-  async function updatePrice(id: string, price: string) {
+  async function updatePrice(id: string, price: string, name: string) {
     const val = parseFloat(price);
     if (!isNaN(val)) {
       await supabase.from("grocery_items").update({ price: val }).eq("id", id);
+      notify(`a mis à jour le prix de "${name}" à ${val.toFixed(2)}€`, "/groceries");
       router.refresh();
     }
   }
 
-  async function deleteItem(id: string) {
+  async function deleteItem(id: string, name: string) {
     await supabase.from("grocery_items").delete().eq("id", id);
+    notify(`a supprimé "${name}" de la liste de courses`, "/groceries");
     router.refresh();
   }
 
@@ -143,6 +160,9 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
         if (itemsToInsert.length > 0) {
           await supabase.from("receipt_items").insert(itemsToInsert);
         }
+        const store = scanResult.store_name ? ` chez ${scanResult.store_name}` : "";
+        const total = Number(scanResult.total ?? 0).toFixed(2);
+        notify(`a enregistré un ticket de caisse${store} — ${total}€`, "/groceries");
       }
 
       setImageFile(null);
@@ -153,8 +173,9 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
     setSavingReceipt(false);
   }
 
-  async function deleteReceipt(id: string) {
+  async function deleteReceipt(id: string, storeName: string) {
     await supabase.from("receipts").delete().eq("id", id);
+    notify(`a supprimé le ticket de caisse${storeName ? ` de ${storeName}` : ""}`, "/groceries");
     router.refresh();
   }
 
@@ -265,8 +286,8 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
                     item={item}
                     addedBy={getUserName(item.added_by)}
                     onToggle={() => toggleItem(item)}
-                    onDelete={() => deleteItem(item.id)}
-                    onPriceChange={(p) => updatePrice(item.id, p)}
+                    onDelete={() => deleteItem(item.id, item.name)}
+                    onPriceChange={(p) => updatePrice(item.id, p, item.name)}
                     showUser={profiles.length > 1}
                   />
                 ))}
@@ -285,8 +306,8 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
                     item={item}
                     addedBy={getUserName(item.added_by)}
                     onToggle={() => toggleItem(item)}
-                    onDelete={() => deleteItem(item.id)}
-                    onPriceChange={(p) => updatePrice(item.id, p)}
+                    onDelete={() => deleteItem(item.id, item.name)}
+                    onPriceChange={(p) => updatePrice(item.id, p, item.name)}
                     showUser={profiles.length > 1}
                   />
                 ))}
@@ -441,7 +462,7 @@ export default function GroceriesClient({ userId, weekStart, weekLabel, items, b
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); deleteReceipt(receipt.id); }}
+                        onClick={(e) => { e.stopPropagation(); deleteReceipt(receipt.id, receipt.store_name ?? ""); }}
                         className="text-gray-300 hover:text-red-400 transition-colors p-1"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -536,7 +557,7 @@ function GroceryRow({
 
       <button
         onClick={onDelete}
-        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"
+        className="text-gray-300 hover:text-red-400 transition-all sm:opacity-0 sm:group-hover:opacity-100"
       >
         <Trash2 className="w-4 h-4" />
       </button>

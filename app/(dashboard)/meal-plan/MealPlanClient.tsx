@@ -65,8 +65,17 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
     router.refresh();
   }
 
-  async function deleteMeal(id: string) {
+  function notify(message: string) {
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, url: "/meal-plan" }),
+    });
+  }
+
+  async function deleteMeal(id: string, mealName: string) {
     await supabase.from("meal_plans").delete().eq("id", id);
+    notify(`a supprimé "${mealName}" du planning repas`);
     router.refresh();
   }
 
@@ -81,13 +90,14 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
       meal_name: editName.trim(),
       notes: editNotes.trim() || null,
     }).eq("id", id);
+    notify(`a modifié "${editName.trim()}" dans le planning repas`);
     setEditingId(null);
     router.refresh();
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <CalendarDays className="w-6 h-6 text-brand-500" />
@@ -180,7 +190,7 @@ export default function MealPlanClient({ userId, weekDays, weekLabel, mealPlans,
                                   <button onClick={() => startEdit(m)} className="text-gray-400 hover:text-brand-500 p-1 transition-colors">
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
-                                  <button onClick={() => deleteMeal(m.id)} className="text-gray-400 hover:text-red-400 p-1 transition-colors">
+                                  <button onClick={() => deleteMeal(m.id, m.meal_name)} className="text-gray-400 hover:text-red-400 p-1 transition-colors">
                                     <X className="w-3.5 h-3.5" />
                                   </button>
                                 </div>

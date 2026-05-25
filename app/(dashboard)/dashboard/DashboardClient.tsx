@@ -50,6 +50,14 @@ export default function DashboardClient({
     } else {
       await supabase.from("weekly_budgets").insert({ week_start: weekStart, amount, created_by: userId });
     }
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `a défini le budget courses à ${amount.toFixed(2)}€ pour la semaine`,
+        url: "/dashboard",
+      }),
+    });
     setSavingBudget(false);
     router.refresh();
   }

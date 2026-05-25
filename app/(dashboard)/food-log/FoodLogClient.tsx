@@ -144,8 +144,16 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
     router.refresh();
   }
 
-  async function deleteLog(id: string) {
+  async function deleteLog(id: string, foodName: string) {
     await supabase.from("food_logs").delete().eq("id", id);
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `a supprimé "${foodName}" du journal alimentaire`,
+        url: "/food-log",
+      }),
+    });
     router.refresh();
   }
 
@@ -166,6 +174,14 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
       carbs: parseFloat(editCarbs) || 0,
       fat: parseFloat(editFat) || 0,
     }).eq("id", id);
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: `a modifié "${editName.trim()}" dans le journal alimentaire`,
+        url: "/food-log",
+      }),
+    });
     setEditingId(null);
     router.refresh();
   }
@@ -197,7 +213,7 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-brand-500" />
@@ -451,7 +467,7 @@ export default function FoodLogClient({ userId, today, logs, profiles, targetCal
                         <button onClick={() => startEdit(log)} className="bg-brand-50 text-brand-500 hover:bg-brand-100 p-2 rounded-lg transition-colors">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => deleteLog(log.id)} className="bg-red-50 text-red-400 hover:bg-red-100 p-2 rounded-lg transition-colors">
+                        <button onClick={() => deleteLog(log.id, log.food_name)} className="bg-red-50 text-red-400 hover:bg-red-100 p-2 rounded-lg transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

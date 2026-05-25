@@ -95,13 +95,13 @@ export default function Navbar({ userName }: { userName: string }) {
       </aside>
 
       {/* Mobile bottom bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around px-1 py-2 z-50">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around px-1 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] z-50">
         {[...navItems, { href: "/profile", label: "Profil", icon: UserCircle }].map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={cn(
-              "flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl text-xs transition-colors",
+              "flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-xs transition-colors min-w-[44px] min-h-[44px] justify-center",
               pathname === href
                 ? "text-brand-600 font-semibold"
                 : "text-gray-500"

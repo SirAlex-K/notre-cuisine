@@ -46,6 +46,14 @@ export default function WeightClient({ userId, logs, profiles }: Props) {
     id: l.id,
   }));
 
+  function notify(message: string) {
+    fetch("/api/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message, url: "/weight" }),
+    });
+  }
+
   async function addWeight() {
     const val = parseFloat(weight);
     if (isNaN(val) || val <= 0) return;
@@ -55,19 +63,21 @@ export default function WeightClient({ userId, logs, profiles }: Props) {
       weight: val,
       user_id: selectedUser,
     }, { onConflict: "date,user_id" });
+    notify(`a enregistré ${val} kg dans le suivi du poids`);
     setWeight("");
     setSaving(false);
     router.refresh();
   }
 
-  async function deleteLog(id: string) {
+  async function deleteLog(id: string, weightVal: number) {
     await supabase.from("weight_logs").delete().eq("id", id);
+    notify(`a supprimé la mesure de ${weightVal} kg dans le suivi du poids`);
     router.refresh();
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Scale className="w-6 h-6 text-brand-500" />
@@ -194,8 +204,8 @@ export default function WeightClient({ userId, logs, profiles }: Props) {
                 <div className="flex items-center gap-3">
                   <span className="font-semibold text-gray-900">{log.weight} kg</span>
                   <button
-                    onClick={() => deleteLog(log.id)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"
+                    onClick={() => deleteLog(log.id, log.weight)}
+                    className="text-gray-300 hover:text-red-400 transition-all sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
